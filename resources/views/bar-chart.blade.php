@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,11 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bar Chart with Data from ChartModel</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
 </head>
 <body>
     <h1>Bar Chart with Data from ChartModel</h1>
 
-    <form action="{{ url('/bar-chart') }}" method="get">
+    <form id="filterForm">
         <label for="selected_month">Select Month:</label>
         <select id="selected_month" name="selected_month">
             @for ($i = 1; $i <= 12; $i++)
@@ -25,7 +25,7 @@
             @endfor
         </select>
 
-        <button type="submit">Filter</button>
+        <button type="button" id="filterButton">Filter</button>
     </form>
 
     <div>
@@ -33,42 +33,71 @@
     </div>
 
     <script>
-        var ctx = document.getElementById('myChart').getContext('2d');
-        var myChart = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: {!! json_encode($labels) !!},
-                datasets: [{
-                    label: '{{ date('F', mktime(0, 0, 0, $selectedMonth, 1)) }} ',
-                    data: {!! json_encode($values) !!},
-                    backgroundColor: 'rgba(50, 147, 244, 210)',
-                    borderColor: 'rgba(75, 192, 192, 1)',
-                    borderWidth: 1
-                }]
-            },
-            options: {
-        scales: {
-            y: {
-                beginAtZero: true
+        $(document).ready(function() {
+            // Initial chart setup
+            var ctx = document.getElementById('myChart').getContext('2d');
+            var myChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: '',
+                        data: [],
+                        backgroundColor: 'rgba(50, 147, 244, 210)',
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                        }
+                    },
+                    layout: {
+                        padding: {
+                            left: 50,
+                            right: 50,
+                            top: 0,
+                            bottom: 0
+                        }
+                    },
+                    barPercentage: 0.8,
+                    categoryPercentage: 0.3,
+                }
+            });
+
+            // Function to update the chart data
+            function updateChart(selectedMonth, selectedYear) {
+                $.ajax({
+                    url: "{{ url('/bar-chart') }}",
+                    method: "GET",
+                    data: { selected_month: selectedMonth, selected_year: selectedYear },
+                    dataType: "json",
+                    success: function(data) {
+                        myChart.data.labels = data.labels;
+                        myChart.data.datasets[0].label = data.monthLabel;
+                        myChart.data.datasets[0].data = data.values;
+                        myChart.update();
+                    }
+                });
             }
-        },
-        plugins: {
-            legend: {
-                display: true,
-                position: 'top',
-            }
-        },
-        layout: {
-            padding: {
-                left: 50,
-                right: 50,
-                top: 0,
-                bottom: 0
-            }
-        },
-        barPercentage: 0.8, // Adjust this value to control the width of each bar
-        categoryPercentage: 0.3, // Adjust this value to control the width of each category group
-    }
+
+            // Initial chart load
+            updateChart($("#selected_month").val(), $("#selected_year").val());
+
+            // Filter button click event
+            $("#filterButton").click(function() {
+                var selectedMonth = $("#selected_month").val();
+                var selectedYear = $("#selected_year").val();
+                updateChart(selectedMonth, selectedYear);
+            });
         });
     </script>
 </body>
